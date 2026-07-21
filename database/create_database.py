@@ -3,6 +3,9 @@ import duckdb
 DATABASE_PATH = "data/hr_database.duckdb"
 SCHEMA_PATH = "database/schema.sql"
 
+# Connect to (or create) the database
+#connection = duckdb.connect("data/hr_database.duckdb")
+
 def create_database():
     '''Create a DuckDB database using project schema.'''
     try:
