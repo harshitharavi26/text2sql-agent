@@ -81,20 +81,46 @@ projects.project_id -> employee_projects.project_id
 employees.manager_id -> employees.employee_id
 """
 
-def build_sql_prompt(user_question: str) -> str:
-    """
-    Build a prompt for SQL generation.
-    """
+# def build_sql_prompt(user_question: str) -> str:
+#     """
+#     Build a prompt for SQL generation.
+#     """
+
+#     return f"""
+# {SYSTEM_PROMPT}
+
+# Database Schema:
+
+# {DATABASE_SCHEMA}
+
+# User Question:
+# {user_question}
+
+# Return only SQL.
+# """ 
+
+
+def build_prompt(question, schema_context):
 
     return f"""
-{SYSTEM_PROMPT}
+You are an expert SQL developer.
+
+You are given part of a database schema.
+
+Use ONLY the tables and columns provided below.
 
 Database Schema:
+{schema_context}
 
-{DATABASE_SCHEMA}
+Rules:
+- Return ONLY SQL.
+- Do not explain your answer.
+- Do not use markdown.
+- Use proper SQL syntax.
+- Only reference tables and columns from the schema.
 
-User Question:
-{user_question}
+Question:
+{question}
 
-Return only SQL.
+SQL:
 """
