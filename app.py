@@ -1,44 +1,34 @@
-from prompts.sql_prompt import build_sql_prompt
-from models.llm import generate_response
-from database.db import execute_query
-from utils.sql_validator import validate_sql
-from prompts.explanation_prompt import build_explanation_prompt
+from agents.sql_agent import answer_question
 
 
 def main():
 
     question = input("Ask a question: ")
 
-    prompt = build_sql_prompt(question)
-
-    sql = generate_response(prompt)
+    result = answer_question(question)
 
     print("\nGenerated SQL:\n")
-    print(sql)
+    print(result["sql"])
 
-    if not validate_sql(sql):
-        print("\nUnsafe SQL detected.")
+    if not result["success"]:
+        print("\nError:\n")
+        print(result["error"])
         return
 
-    columns, results = execute_query(sql)
+    if result["repaired"]:
+        print("\nThe original SQL failed and was repaired.")
+
+        print("\nOriginal SQL:\n")
+        print(result["original_sql"])
+
+        print("\nOriginal Error:\n")
+        print(result["original_error"])
 
     print("\nResults:\n")
+    print(result["columns"])
 
-    if not results:
-        print("No records found.")
-        return
-    
-    summary_prompt = build_explanation_prompt(question, results)
-
-    summary = generate_response(summary_prompt)
-
-    print(columns)
-
-    for row in results:
-        print(dict(zip(columns, row)))
-
-    print("\nSummary\n")
-    print(summary)
+    for row in result["rows"]:
+        print(dict(zip(result["columns"], row)))
 
 
 if __name__ == "__main__":

@@ -3,27 +3,30 @@ from prompts.sql_prompt import build_prompt
 from models.llm import generate_response
 from database.query_executor import execute_query
 from agents.sql_repair import repair_sql
+from utils.sql_validator import validate_sql
 
 
 def answer_question(question):
-    """
-    Run the Text-to-SQL pipeline.
 
-    If the first SQL query fails, repair it and retry once.
-    """
-
-    # Retrieve relevant schema
+    # Retrieve schema
     results = search_schema(question)
-
     schema = "\n\n".join(results["documents"][0])
 
-    # Generate the initial SQL
+    # Generate SQL
     prompt = build_prompt(question, schema)
     original_sql = generate_response(prompt).strip()
 
-    # First execution attempt
-    columns, rows = execute_query(original_sql)
+    # Validate original SQL
+    is_valid, validation_result = validate_sql(original_sql)
 
+    if is_valid:
+        original_sql = validation_result
+        columns, rows = execute_query(original_sql)
+    else:
+        columns = None
+        rows = validation_result
+
+    # Original SQL worked
     if columns is not None:
         return {
             "success": True,
@@ -34,23 +37,37 @@ def answer_question(question):
             "rows": rows,
         }
 
-    # Save the first database error
+    # Original SQL failed
     original_error = rows
 
-    # Ask the repair agent to fix the SQL
+    # Repair SQL
     repaired_sql = repair_sql(
-        question=question,
-        schema=schema,
-        failed_sql=original_sql,
-        error_message=original_error,
+        question,
+        schema,
+        original_sql,
+        original_error,
     ).strip()
 
-    # Second execution attempt
-    repaired_columns, repaired_rows = execute_query(
-        repaired_sql
-    )
+    # Validate repaired SQL
+    is_valid, validation_result = validate_sql(repaired_sql)
 
-    if repaired_columns is not None:
+    if not is_valid:
+        return {
+            "success": False,
+            "repaired": True,
+            "schema": schema,
+            "original_sql": original_sql,
+            "original_error": original_error,
+            "sql": repaired_sql,
+            "error": validation_result,
+        }
+
+    repaired_sql = validation_result
+
+    # Execute repaired SQL
+    columns, rows = execute_query(repaired_sql)
+
+    if columns is not None:
         return {
             "success": True,
             "repaired": True,
@@ -58,11 +75,10 @@ def answer_question(question):
             "original_sql": original_sql,
             "original_error": original_error,
             "sql": repaired_sql,
-            "columns": repaired_columns,
-            "rows": repaired_rows,
+            "columns": columns,
+            "rows": rows,
         }
 
-    # The repaired SQL also failed
     return {
         "success": False,
         "repaired": True,
@@ -70,5 +86,5 @@ def answer_question(question):
         "original_sql": original_sql,
         "original_error": original_error,
         "sql": repaired_sql,
-        "error": repaired_rows,
+        "error": rows,
     }
