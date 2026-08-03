@@ -3,6 +3,7 @@ from prompts.sql_prompt import build_prompt
 from models.llm import generate_response
 from database.query_executor import execute_query
 from agents.sql_repair import repair_sql
+from agents.explanation_agent import generate_answer
 from utils.sql_validator import validate_sql
 
 
@@ -28,6 +29,13 @@ def answer_question(question):
 
     # Original SQL worked
     if columns is not None:
+
+        answer = generate_answer(
+            question,
+            columns,
+            rows
+        )
+
         return {
             "success": True,
             "repaired": False,
@@ -35,6 +43,7 @@ def answer_question(question):
             "sql": original_sql,
             "columns": columns,
             "rows": rows,
+            "answer": answer,
         }
 
     # Original SQL failed
@@ -68,6 +77,13 @@ def answer_question(question):
     columns, rows = execute_query(repaired_sql)
 
     if columns is not None:
+
+        answer = generate_answer(
+            question,
+            columns,
+            rows
+        )
+
         return {
             "success": True,
             "repaired": True,
@@ -77,8 +93,10 @@ def answer_question(question):
             "sql": repaired_sql,
             "columns": columns,
             "rows": rows,
+            "answer": answer,
         }
 
+    # Repaired SQL also failed
     return {
         "success": False,
         "repaired": True,

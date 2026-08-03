@@ -1,5 +1,8 @@
-
-def build_explanation_prompt(question: str, results) -> str:
+def build_explanation_prompt(
+    question: str,
+    columns,
+    rows
+) -> str:
     """
     Build a prompt for explaining SQL query results.
     """
@@ -11,12 +14,21 @@ A user asked:
 
 {question}
 
-The SQL query returned these results:
+The query returned:
 
-{results}
+Columns:
+{columns}
+
+Rows:
+{rows}
 
 Write a short, clear explanation.
 
-Do not mention SQL.
-Keep it under 100 words.
+Rules:
+- Do not mention SQL.
+- Do not use Markdown.
+- Do not use bullet points.
+- Do not use mathematical formatting.
+- Keep currency values in normal format like $124,191.82.
+- Keep the answer under 100 words.
 """
