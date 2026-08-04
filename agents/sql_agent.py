@@ -11,7 +11,16 @@ def answer_question(question):
 
     # Retrieve schema
     results = search_schema(question)
-    schema = "\n\n".join(results["documents"][0])
+    documents = results.get("documents", [[]])[0]
+
+    if not documents:
+        return {
+        "success": False,
+        "repaired": False,
+        "error": "No relevant schema found.",
+    }
+
+    schema = "\n\n".join(documents)
 
     # Generate SQL
     prompt = build_prompt(question, schema)
