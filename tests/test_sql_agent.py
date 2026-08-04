@@ -1,4 +1,4 @@
-from agents.sql_agent import answer_question
+from agents.sql_agent_old import answer_question
 
 
 def main():

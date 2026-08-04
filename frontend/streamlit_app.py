@@ -5,9 +5,8 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
 import streamlit as st
-import pandas as pd
 
-from agents.sql_agent import answer_question
+from agents.graph import run_graph
 
 
 st.set_page_config(
@@ -18,13 +17,9 @@ st.set_page_config(
 
 st.title("🤖 Text-to-SQL Agent")
 
-st.caption(
-    "Ask questions about the HR database using natural language."
-)
-
 
 question = st.text_input(
-    "Your question"
+    "Ask a question about the HR database"
 )
 
 
@@ -42,80 +37,28 @@ if st.button("Generate Answer"):
             "Generating answer..."
         ):
 
-            result = answer_question(question)
+            result = run_graph(question)
 
 
-        # Failure response
-        if not result["success"]:
+        # Error handling
+        if result["error"]:
 
             st.error(
                 "Unable to generate a successful answer."
             )
 
-            with st.expander(
-                "Error Details"
-            ):
+            st.subheader("Error")
 
-                st.write(
-                    result["error"]
-                )
-
-                if "sql" in result:
-
-                    st.subheader(
-                        "Generated SQL"
-                    )
-
-                    st.code(
-                        result["sql"],
-                        language="sql"
-                    )
-
-
-        # Successful response
-        else:
-
-            # Answer section
-            st.subheader(
-                "💡 Answer"
-            )
-
-            st.text(
-                result["answer"]
+            st.write(
+                result["error"]
             )
 
 
-            # Metadata
-            col1, col2 = st.columns(2)
+            if result.get("sql"):
 
-            with col1:
-
-                st.metric(
-                    "Rows Returned",
-                    len(result["rows"])
+                st.subheader(
+                    "Generated SQL"
                 )
-
-            with col2:
-
-                if result["repaired"]:
-
-                    st.metric(
-                        "SQL Repair",
-                        "Required"
-                    )
-
-                else:
-
-                    st.metric(
-                        "SQL Repair",
-                        "Not Required"
-                    )
-
-
-            # SQL section
-            with st.expander(
-                "📄 View Generated SQL"
-            ):
 
                 st.code(
                     result["sql"],
@@ -123,47 +66,83 @@ if st.button("Generate Answer"):
                 )
 
 
-            # Repair details
+        else:
+
+            # Natural language answer
+            st.subheader("Answer")
+
+            st.markdown(
+            f"""
+            <div style="
+                font-size:18px;
+                color:white;
+                line-height:1.6;
+            ">
+                {result["answer"]}
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+
+            # Generated SQL
+            st.subheader(
+                "Generated SQL"
+            )
+
+            st.code(
+                result["sql"],
+                language="sql"
+            )
+
+
+            # Repair information
             if result["repaired"]:
 
-                st.warning(
+                st.info(
                     "The original SQL failed and was repaired."
                 )
 
                 with st.expander(
-                    "🔧 Repair Details"
+                    "Repair Details"
                 ):
 
-                    st.subheader(
-                        "Original SQL"
-                    )
+                    if "original_sql" in result:
 
-                    st.code(
-                        result["original_sql"],
-                        language="sql"
-                    )
+                        st.write(
+                            "Original SQL"
+                        )
+
+                        st.code(
+                            result["original_sql"],
+                            language="sql"
+                        )
 
 
-                    st.subheader(
-                        "Original Error"
-                    )
+                    if "original_error" in result:
 
-                    st.error(
-                        result["original_error"]
-                    )
+                        st.write(
+                            "Original Error"
+                        )
+
+                        st.error(
+                            result["original_error"]
+                        )
 
 
             # Results table
             st.subheader(
-                "📊 Results"
+                "Results"
             )
 
-            df = pd.DataFrame(
-                result["rows"],
-                columns=result["columns"]
-            )
+
+            rows = [
+                dict(zip(result["columns"], row))
+                for row in result["rows"]
+            ]
+
 
             st.dataframe(
-                df,
+                rows,
                 use_container_width=True
             )
